@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -11,8 +14,19 @@ const navLinks = [
 ];
 
 export default function Navbar() {
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -33,6 +47,15 @@ export default function Navbar() {
       document.body.style.overflow = "";
     };
   }, [mobileOpen]);
+
+  async function handleLogout() {
+    try {
+      await signOut(auth);
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  }
 
   return (
     <>
@@ -86,13 +109,26 @@ export default function Navbar() {
                   </motion.span>
                 </Link>
               ))}
-              <Link
-                href="/admin"
-                className="text-xs font-normal tracking-wide transition-colors duration-200 hover:text-[#C4916E]"
-                style={{ color: "#8B8680" }}
-              >
-                Admin
-              </Link>
+              
+              {!loading && (
+                user ? (
+                  <button
+                    onClick={handleLogout}
+                    className="text-sm font-medium px-4 py-2 rounded-lg transition-all duration-200 hover:opacity-90"
+                    style={{ background: "#C4916E", color: "#fff" }}
+                  >
+                    Logout
+                  </button>
+                ) : (
+                  <Link
+                    href="/auth"
+                    className="text-sm font-medium px-4 py-2 rounded-lg transition-all duration-200 hover:opacity-90"
+                    style={{ background: "#C4916E", color: "#fff" }}
+                  >
+                    Login
+                  </Link>
+                )
+              )}
             </div>
 
             {/* Mobile Hamburger */}
@@ -178,25 +214,38 @@ export default function Navbar() {
                   </Link>
                 </motion.div>
               ))}
-              <motion.div
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{
-                  delay: 0.1 + navLinks.length * 0.08,
-                  duration: 0.4,
-                }}
-                className="mt-6 pt-6"
-                style={{ borderTop: "1px solid #F0EBE3" }}
-              >
-                <Link
-                  href="/admin"
-                  onClick={() => setMobileOpen(false)}
-                  className="block text-sm font-normal tracking-wide transition-colors duration-200 hover:text-[#C4916E]"
-                  style={{ color: "#8B8680" }}
+              
+              {!loading && (
+                <motion.div
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 + navLinks.length * 0.08, duration: 0.4 }}
+                  className="mt-6 pt-6"
+                  style={{ borderTop: "1px solid #F0EBE3" }}
                 >
-                  Admin
-                </Link>
-              </motion.div>
+                  {user ? (
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setMobileOpen(false);
+                      }}
+                      className="w-full text-left text-lg font-medium px-4 py-3 rounded-lg transition-all duration-200"
+                      style={{ background: "#C4916E", color: "#fff" }}
+                    >
+                      Logout
+                    </button>
+                  ) : (
+                    <Link
+                      href="/auth"
+                      onClick={() => setMobileOpen(false)}
+                      className="block text-center text-lg font-medium px-4 py-3 rounded-lg transition-all duration-200"
+                      style={{ background: "#C4916E", color: "#fff" }}
+                    >
+                      Login
+                    </Link>
+                  )}
+                </motion.div>
+              )}
             </div>
           </motion.div>
         )}
